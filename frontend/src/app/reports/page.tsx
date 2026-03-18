@@ -188,7 +188,7 @@ export default function ReportsPage() {
         format,
         ...options,
       });
-      return response;
+      return response.data as { downloadUrl?: string };
     },
     onSuccess: (data) => {
       // Trigger download

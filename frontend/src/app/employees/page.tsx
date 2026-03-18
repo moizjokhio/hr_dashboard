@@ -29,7 +29,18 @@ export default function EmployeesPage() {
 
   // Fetch filter options
   useEffect(() => {
-    getFilterOptions().then(setFilterOptions).catch(console.error);
+    getFilterOptions()
+      .then((options) =>
+        setFilterOptions({
+          ...options,
+          cities: [],
+          employmentTypes: [],
+          religions: [],
+          educationLevels: [],
+          maritalStatuses: [],
+        })
+      )
+      .catch(console.error);
   }, [setFilterOptions]);
 
   // Build filters from filter blocks

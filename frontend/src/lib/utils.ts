@@ -16,6 +16,11 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
+export function formatPercentage(value: number, fractionDigits: number = 1): string {
+  const numeric = Number.isFinite(value) ? value : 0;
+  return `${numeric.toFixed(fractionDigits)}%`;
+}
+
 export function getGradeColor(grade: string | null | undefined): string {
   const g = (grade || "").toLowerCase();
   if (!g) return "#6b7280"; // gray
