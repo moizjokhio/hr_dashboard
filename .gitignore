@@ -1,0 +1,51 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Node / Frontend
+node_modules/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+
+# Env / Secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.local
+frontend/.env.local
+frontend/.env.production.local
+frontend/.env.development.local
+
+# Build / temp
+dist/
+build/
+coverage/
+*.tmp
+*.temp
+
+# Data files (large/private)
+*.xls
+*.xlsx
+*.xlsb
+uploads/

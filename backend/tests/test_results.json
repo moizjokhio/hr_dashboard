@@ -1,0 +1,486 @@
+[
+  {
+    "test_id": 1,
+    "query": "How many female employees in the Risk department are based in the UBL Head Office?",
+    "category": "location_dept_disambig",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: department",
+      "Missing expected term: Risk",
+      "Missing expected term: branch_name",
+      "Missing expected term: UBL Head Office",
+      "Missing expected term: gender",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 2,
+    "query": "Count all employees in UBL Head Office",
+    "category": "location_dept_disambig",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: branch_name",
+      "Missing expected term: UBL Head Office",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 3,
+    "query": "List employees in Operations department at Karachi branches",
+    "category": "location_dept_disambig",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: department",
+      "Missing expected term: Operations",
+      "Missing expected term: branch_city",
+      "Missing expected term: Karachi",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 4,
+    "query": "Show me all departments in UBL Head Office location",
+    "category": "location_dept_disambig",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: department",
+      "Missing expected term: branch_name",
+      "Missing expected term: UBL Head Office",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 5,
+    "query": "How many males work in the Risk department?",
+    "category": "location_dept_disambig",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: department",
+      "Missing expected term: Risk",
+      "Missing expected term: gender",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 6,
+    "query": "Count employees by branch location",
+    "category": "location_dept_disambig",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: branch_name",
+      "Missing expected term: GROUP BY",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 7,
+    "query": "Show the average salary for all employees at the avp 1 level",
+    "category": "grade_normalization",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: grade_level",
+      "Missing expected term: AVP-I",
+      "Missing expected term: AVG",
+      "Missing expected term: salary",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 8,
+    "query": "How many employees are at grade svp 2?",
+    "category": "grade_normalization",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: grade_level",
+      "Missing expected term: SVP-II",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 9,
+    "query": "List all og-3 employees",
+    "category": "grade_normalization",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: grade_level",
+      "Missing expected term: OG-3",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 10,
+    "query": "Count employees by grade level",
+    "category": "grade_normalization",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: grade_level",
+      "Missing expected term: GROUP BY",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 11,
+    "query": "Average performance score for AVP-I grade",
+    "category": "grade_normalization",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: grade_level",
+      "Missing expected term: AVP-I",
+      "Missing expected term: performance_score",
+      "Missing expected term: AVG",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 12,
+    "query": "Show salary distribution for sc1 grade",
+    "category": "grade_normalization",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: grade_level",
+      "Missing expected term: SC-1",
+      "Missing expected term: salary",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 13,
+    "query": "List the full name and gross salary for employees who joined before 2020 in the odbc table",
+    "category": "odbc_queries",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: EMPLOYEE_FULL_NAME",
+      "Missing expected term: GROSS_SALARY",
+      "Missing expected term: DATE_OF_JOIN",
+      "Missing expected term: 2020",
+      "Missing expected term: odbc",
+      "Expected table 'odbc' not found"
+    ]
+  },
+  {
+    "test_id": 14,
+    "query": "Find employees in the North region and flagship branches from ODBC",
+    "category": "odbc_queries",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: REGION",
+      "Missing expected term: North",
+      "Missing expected term: BRANCH_FLAGSHIP",
+      "Missing expected term: odbc",
+      "Expected table 'odbc' not found"
+    ]
+  },
+  {
+    "test_id": 15,
+    "query": "Show all employees with their department name from odbc table",
+    "category": "odbc_queries",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: DEPARTMENT_NAME",
+      "Missing expected term: odbc",
+      "Expected table 'odbc' not found"
+    ]
+  },
+  {
+    "test_id": 16,
+    "query": "Count employees by employment status in ODBC",
+    "category": "odbc_queries",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: EMPLOYMENT_STATUS",
+      "Missing expected term: GROUP BY",
+      "Missing expected term: odbc",
+      "Expected table 'odbc' not found"
+    ]
+  },
+  {
+    "test_id": 17,
+    "query": "List employees with their manager name from odbc",
+    "category": "odbc_queries",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: MANAGER_EMP_NAME",
+      "Missing expected term: odbc",
+      "Expected table 'odbc' not found"
+    ]
+  },
+  {
+    "test_id": 18,
+    "query": "Find the employee number and name for everyone with more than 10 years of total experience",
+    "category": "experience",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: EMPLOYEE_NUMBER",
+      "Missing expected term: Total_Experience",
+      "Missing expected term: 10",
+      "Missing expected term: total_experience",
+      "Expected table 'total_experience' not found"
+    ]
+  },
+  {
+    "test_id": 19,
+    "query": "Count how many employees have a termination reason related to redundancy",
+    "category": "termination",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: ACTION_REASON",
+      "Missing expected term: redundancy",
+      "Missing expected term: odbc",
+      "Expected table 'odbc' not found"
+    ]
+  },
+  {
+    "test_id": 20,
+    "query": "Show employees with previous employer information",
+    "category": "experience",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: Previous_Employer",
+      "Missing expected term: total_experience",
+      "Expected table 'total_experience' not found"
+    ]
+  },
+  {
+    "test_id": 21,
+    "query": "List terminated employees with their last working date",
+    "category": "termination",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: LAST_WORKING_DATE",
+      "Missing expected term: odbc",
+      "Expected table 'odbc' not found"
+    ]
+  },
+  {
+    "test_id": 22,
+    "query": "Count employees by total years of experience ranges",
+    "category": "experience",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: Total_Experience",
+      "Missing expected term: total_experience",
+      "Expected table 'total_experience' not found"
+    ]
+  },
+  {
+    "test_id": 23,
+    "query": "What is the average salary by department?",
+    "category": "aggregation",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: AVG",
+      "Missing expected term: salary",
+      "Missing expected term: department",
+      "Missing expected term: GROUP BY",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 24,
+    "query": "Show gender distribution by department",
+    "category": "aggregation",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: gender",
+      "Missing expected term: department",
+      "Missing expected term: GROUP BY",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 25,
+    "query": "What is the average performance score by grade level?",
+    "category": "aggregation",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: AVG",
+      "Missing expected term: performance_score",
+      "Missing expected term: grade_level",
+      "Missing expected term: GROUP BY",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 26,
+    "query": "Count employees by marital status",
+    "category": "aggregation",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: marital_status",
+      "Missing expected term: GROUP BY",
+      "Missing expected term: COUNT",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 27,
+    "query": "Show salary statistics for each branch city",
+    "category": "aggregation",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: branch_city",
+      "Missing expected term: salary",
+      "Missing expected term: GROUP BY",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 28,
+    "query": "List top 5 departments by employee count",
+    "category": "aggregation",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: department",
+      "Missing expected term: COUNT",
+      "Missing expected term: GROUP BY",
+      "Missing expected term: LIMIT",
+      "Missing expected term: 5",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 29,
+    "query": "Show average years of experience by education level",
+    "category": "aggregation",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: AVG",
+      "Missing expected term: years_experience",
+      "Missing expected term: education_level",
+      "Missing expected term: GROUP BY",
+      "Expected table 'employees' not found"
+    ]
+  },
+  {
+    "test_id": 30,
+    "query": "Count active vs resigned employees",
+    "category": "aggregation",
+    "success": false,
+    "generated_sql": "",
+    "execution_success": false,
+    "row_count": 0,
+    "error": "Error: '\"is_data\"'",
+    "validation_notes": [
+      "Missing expected term: status",
+      "Missing expected term: GROUP BY",
+      "Missing expected term: COUNT",
+      "Expected table 'employees' not found"
+    ]
+  }
+]

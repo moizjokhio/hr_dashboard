@@ -1,0 +1,7 @@
+try:
+    from app.ml.prediction_service import PredictionService
+    print("PredictionService imported successfully")
+except ImportError as e:
+    print(f"ImportError: {e}")
+except Exception as e:
+    print(f"Error: {e}")
