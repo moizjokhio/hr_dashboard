@@ -72,6 +72,16 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         {/* User menu */}
         <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+          <form action="/api/auth/logout" method="POST">
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1 rounded-md border border-input px-3 py-2 text-sm hover:bg-muted transition-colors"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden md:inline">Sign Out</span>
+            </button>
+          </form>
           <div className="hidden md:block text-right">
             <p className="text-sm font-medium">Admin User</p>
             <p className="text-xs text-muted-foreground">HR Analytics</p>
