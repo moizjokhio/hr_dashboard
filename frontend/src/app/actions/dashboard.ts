@@ -3,8 +3,9 @@
 import pool from '@/lib/db';
 
 export async function getDashboardMetrics() {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     // 1. Headcount
     const headcountRes = await client.query(
       `SELECT COUNT(*) as count FROM odbc WHERE "EMPLOYMENT_STATUS" LIKE 'Active%'`
@@ -38,16 +39,18 @@ export async function getDashboardMetrics() {
       attrition,
       genderRatio
     };
-  } catch {
+  } catch (error) {
+    console.error("Error fetching dashboard metrics:", error);
     return { headcount: 0, payrollBurn: 0, attrition: 0, genderRatio: [] };
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
 export async function getWorkflowWidgets() {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     // 1. Probation Cliff
     // Fetch probations ending in the next 30 days (Future only)
     const probationRes = await client.query(
@@ -85,16 +88,18 @@ export async function getWorkflowWidgets() {
       retirementRadar: retirementRes.rows,
       disciplinaryWatch: disciplinaryRes.rows
     };
-  } catch {
+  } catch (error) {
+    console.error("Error fetching workflow widgets:", error);
     return { probationCliff: [], retirementRadar: [], disciplinaryWatch: [] };
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
 export async function getOrgStructureMetrics() {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     // 1. Span of Control
     const spanRes = await client.query(
       `SELECT "MANAGER_EMP_NAME", COUNT(*) as report_count 
@@ -122,16 +127,18 @@ export async function getOrgStructureMetrics() {
         value: parseInt(row.count, 10)
       }))
     };
-  } catch {
+  } catch (error) {
+    console.error("Error fetching org structure metrics:", error);
     return { spanOfControl: [], locationHeatmap: [] };
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
 export async function getCompensationMetrics() {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     // Salary Distribution by Grade
     // We fetch raw data and let frontend/chart library handle boxplot stats or aggregation
     const salaryRes = await client.query(
@@ -154,9 +161,10 @@ export async function getCompensationMetrics() {
     return {
       salaryByGrade
     };
-  } catch {
+  } catch (error) {
+    console.error("Error fetching compensation metrics:", error);
     return { salaryByGrade: {} };
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
