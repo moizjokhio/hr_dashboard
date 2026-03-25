@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AUTH_COOKIE_NAME, createSessionToken, validateAdminCredentials } from "@/lib/auth/session";
+import SubmitButton from "./submit-button";
 
 async function loginAction(formData: FormData) {
   "use server";
@@ -76,12 +77,7 @@ export default function LoginPage({
             />
           </div>
 
-          <button
-            type="submit"
-            className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            Sign In
-          </button>
+          <SubmitButton />
         </form>
       </div>
     </main>
