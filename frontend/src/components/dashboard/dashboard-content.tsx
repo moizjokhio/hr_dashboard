@@ -11,9 +11,12 @@ import { Compensation } from "./compensation";
 interface DashboardContentProps {
   metrics: {
     headcount: number;
-    payrollBurn: number;
+    totalHeadcount: number;
+    activePayrollBurn: number;
+    totalPayrollBurn: number;
     attrition: number;
-    genderRatio: { name: string; value: number }[];
+    activeGenderRatio: { name: string; value: number }[];
+    allGenderRatio: { name: string; value: number }[];
   };
   workflow: {
     probationCliff: any[];
@@ -56,7 +59,6 @@ export function DashboardContent({
             </div>
 
             <ExecutiveSummary {...metrics} />
-            
 
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Organization & DEI</h2>
             <OrgStructure {...orgStructure} />
