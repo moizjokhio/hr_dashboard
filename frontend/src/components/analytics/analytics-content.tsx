@@ -330,27 +330,14 @@ function HiringInsights({ data, selectedYear, setSelectedYear, isPending }: { da
     ],
   };
 
-  const contractTypeChart = {
-    tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
-    title: { text: `${selectedYear} Hires by Contract Type`, left: "center" },
-    legend: { bottom: 0 },
-    series: [{ type: "pie", radius: ["40%", "65%"],
-      data: data.contractTypeHires?.map((d: any) => ({
-        value: d.value,
-        name: d.name,
-        itemStyle: { color: d.name?.toLowerCase().includes('permanent') ? '#10b981' : '#f59e0b' }
-      })) || [],
-    }],
-  };
-
-  const cadreChart = {
+  const gradeChart = {
     tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-    title: { text: `${selectedYear} Hires by Cadre`, left: "center" },
+    title: { text: `${selectedYear} Hires by Grade`, left: "center" },
     grid: { left: "3%", right: "4%", bottom: "3%", containLabel: true },
     xAxis: { type: "value" },
-    yAxis: { type: "category", data: [...(data.cadreHires || [])].reverse().map((d: any) => d.name), axisLabel: { width: 120, overflow: "truncate" } },
-    series: [{ type: "bar", data: [...(data.cadreHires || [])].reverse().map((d: any) => d.value),
-      itemStyle: { color: "#6366f1", borderRadius: [0, 4, 4, 0] }, label: { show: true, position: "right" }
+    yAxis: { type: "category", data: [...(data.gradeHires2025 || [])].reverse().map((d: any) => d.name), axisLabel: { width: 120, overflow: "truncate" } },
+    series: [{ type: "bar", data: [...(data.gradeHires2025 || [])].reverse().map((d: any) => d.value),
+      itemStyle: { color: "#f59e0b", borderRadius: [0, 4, 4, 0] }, label: { show: true, position: "right" }
     }],
   };
 
@@ -412,8 +399,7 @@ function HiringInsights({ data, selectedYear, setSelectedYear, isPending }: { da
           <div className="bg-card p-6 rounded-xl border shadow-sm"><ReactECharts option={monthlyHiring2025Chart} style={{ height: "350px" }} /></div>
           <div className="bg-card p-6 rounded-xl border shadow-sm"><ReactECharts option={genderHires2025Chart} style={{ height: "350px" }} /></div>
           <div className="bg-card p-6 rounded-xl border shadow-sm"><ReactECharts option={groupHires2025Chart} style={{ height: "350px" }} /></div>
-          <div className="bg-card p-6 rounded-xl border shadow-sm"><ReactECharts option={contractTypeChart} style={{ height: "350px" }} /></div>
-          <div className="bg-card p-6 rounded-xl border shadow-sm"><ReactECharts option={cadreChart} style={{ height: "350px" }} /></div>
+          <div className="bg-card p-6 rounded-xl border shadow-sm lg:col-span-2"><ReactECharts option={gradeChart} style={{ height: "350px" }} /></div>
           <div className="bg-card p-6 rounded-xl border shadow-sm lg:col-span-2"><ReactECharts option={yoyChart} style={{ height: "400px" }} /></div>
         </div>
       </div>
