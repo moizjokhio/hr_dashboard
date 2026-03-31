@@ -453,7 +453,25 @@ export async function getGeographicInsights() {
     // By Cluster - Normalize names
     const byCluster = await client.query(
       `SELECT 
-         REGEXP_REPLACE("CLUSTERS", '^\\d+\\.', '') as name,
+         REGEXP_REPLACE(
+           REGEXP_REPLACE(
+             REGEXP_REPLACE(
+               REGEXP_REPLACE(
+                 REGEXP_REPLACE(
+                   REGEXP_REPLACE(
+                     REGEXP_REPLACE("CLUSTERS", '^\\d+\\.', ''),
+                     ' -\\s*(Ops|Sales|Operations)$', '', 'i'
+                   ),
+                   '^(UBL Ameen Cluster|Cluster)\\s+(Sales|Operations)\\s+Office\\s*-\\s*', '\\1 ', 'i'
+                 ),
+                 '^Cluster\\s+Office\\s*-\\s*', 'Cluster ', 'i'
+               ),
+               '^Cluster\\s+Rural\\s+Office\\s*-\\s*', 'Cluster Rural ', 'i'
+             ),
+             '^Cluster\\s+Trade\\s+Business\\s+Office\\s*-\\s*', 'Cluster Trade Business ', 'i'
+           ),
+           '\\s+', ' ', 'g'
+         ) as name,
          COUNT(*) as value
        FROM odbc
        WHERE "EMPLOYMENT_STATUS" = 'Active - Payroll Eligible' AND "CLUSTERS" IS NOT NULL
@@ -934,10 +952,44 @@ export async function getExecutiveSummary() {
     const avgMetrics = await client.query(
       `SELECT 
          ROUND(AVG(EXTRACT(YEAR FROM AGE(CURRENT_DATE, "DATE_OF_BIRTH"::date)))::numeric, 1) as avg_age,
-         ROUND(AVG(EXTRACT(YEAR FROM AGE(CURRENT_DATE, "DATE_OF_JOIN"::date)))::numeric, 1) as avg_tenure,
+         ROUND(
+           AVG(
+             GREATEST(0, (CURRENT_DATE - "DATE_OF_JOIN"::date))::numeric / 365.25
+           )::numeric,
+           1
+         ) as avg_tenure,
          ROUND(AVG(0::numeric)::numeric, 0) as avg_salary
        FROM odbc
-       WHERE "EMPLOYMENT_STATUS" = 'Active - Payroll Eligible'`
+       WHERE "EMPLOYMENT_STATUS" = 'Active - Payroll Eligible'
+         AND "DATE_OF_JOIN" IS NOT NULL
+         AND "DATE_OF_JOIN"::date <= CURRENT_DATE`
+    );
+
+    // Count distinct normalized clusters
+    const clustersCount = await client.query(
+      `SELECT COUNT(DISTINCT 
+         REGEXP_REPLACE(
+           REGEXP_REPLACE(
+             REGEXP_REPLACE(
+               REGEXP_REPLACE(
+                 REGEXP_REPLACE(
+                   REGEXP_REPLACE(
+                     REGEXP_REPLACE("CLUSTERS", '^\\d+\\.', ''),
+                     ' -\\s*(Ops|Sales|Operations)$', '', 'i'
+                   ),
+                   '^(UBL Ameen Cluster|Cluster)\\s+(Sales|Operations)\\s+Office\\s*-\\s*', '\\1 ', 'i'
+                 ),
+                 '^Cluster\\s+Office\\s*-\\s*', 'Cluster ', 'i'
+               ),
+               '^Cluster\\s+Rural\\s+Office\\s*-\\s*', 'Cluster Rural ', 'i'
+             ),
+             '^Cluster\\s+Trade\\s+Business\\s+Office\\s*-\\s*', 'Cluster Trade Business ', 'i'
+           ),
+           '\\s+', ' ', 'g'
+         ) 
+       ) as cluster_count
+       FROM odbc
+       WHERE "EMPLOYMENT_STATUS" = 'Active - Payroll Eligible' AND "CLUSTERS" IS NOT NULL`
     );
 
     // Recent hires (last 30 days)
@@ -960,6 +1012,7 @@ export async function getExecutiveSummary() {
     const m = countMetrics.rows[0];
     const avg = avgMetrics.rows[0];
     const hc = headcountChange.rows[0];
+    const c = clustersCount.rows[0];
     
     return {
       activeEmployees: parseInt(m.active_employees || '0'),
@@ -974,6 +1027,7 @@ export async function getExecutiveSummary() {
       groups: parseInt(m.groups || '0'),
       regions: parseInt(m.regions || '0'),
       branches: parseInt(m.branches || '0'),
+      clusters: parseInt(c.cluster_count || '0'),
       recentHires: parseInt(recentHires.rows[0]?.count || '0'),
       netHeadcount2025: parseInt(hc.hires_2025 || '0') - parseInt(hc.terms_2025 || '0'),
       netHeadcount2024: parseInt(hc.hires_2024 || '0') - parseInt(hc.terms_2024 || '0'),

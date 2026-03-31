@@ -250,11 +250,11 @@ export function OrgStructure({
         )}
       </div>
 
-      {/* Location Headcount */}
+      {/* Cluster Headcount */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">
-            Headcount by Location
+            Headcount by Cluster
           </h3>
           <div className="flex items-center gap-2">
             <button

@@ -8,7 +8,11 @@ const encoder = new TextEncoder();
 
 function toBase64UrlFromBytes(bytes: Uint8Array): string {
   if (typeof Buffer !== "undefined") {
-    return Buffer.from(bytes).toString("base64url");
+    return Buffer.from(bytes)
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
   }
 
   let binary = "";
@@ -21,7 +25,9 @@ function toBase64UrlFromBytes(bytes: Uint8Array): string {
 
 function fromBase64UrlToBytes(value: string): Uint8Array {
   if (typeof Buffer !== "undefined") {
-    return new Uint8Array(Buffer.from(value, "base64url"));
+    const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = `${base64}${"=".repeat((4 - (base64.length % 4)) % 4)}`;
+    return new Uint8Array(Buffer.from(padded, "base64"));
   }
 
   const base64 = value.replace(/-/g, "+").replace(/_/g, "/");

@@ -176,7 +176,7 @@ function ExecutiveSummary({ data }: { data: any }) {
     { title: "Terminations 2025", value: data.terminations2025?.toLocaleString() || "0", icon: UserMinus, color: "bg-red-500", description: "Left the organization" },
     { title: "Net Headcount 2025", value: data.netHeadcount2025 >= 0 ? `+${data.netHeadcount2025}` : data.netHeadcount2025, icon: TrendingUp, color: data.netHeadcount2025 >= 0 ? "bg-emerald-500" : "bg-orange-500", description: "Hires minus terminations" },
     { title: "Average Age", value: `${data.avgAge || 0} yrs`, icon: Users, color: "bg-purple-500", description: "Workforce average age" },
-    { title: "Average Tenure", value: `${data.avgTenure || 0} yrs`, icon: Briefcase, color: "bg-indigo-500", description: "Average years of service" },
+    { title: "Average UBL Experience", value: `${data.avgTenure || 0} yrs`, icon: Briefcase, color: "bg-indigo-500", description: "Average service from hiring date to today (active only)" },
     { title: "Average Salary", value: `PKR ${(data.avgSalary || 0).toLocaleString()}`, icon: DollarSign, color: "bg-amber-500", description: "Gross monthly salary" },
     { title: "Recent Hires (30 days)", value: data.recentHires?.toLocaleString() || "0", icon: UserPlus, color: "bg-cyan-500", description: "New joiners this month" },
   ];
@@ -241,8 +241,8 @@ function ExecutiveSummary({ data }: { data: any }) {
             </div>
             <div className="text-center p-4 bg-muted/50 rounded-lg">
               <Building2 className="h-8 w-8 mx-auto text-purple-500 mb-2" />
-              <p className="text-2xl font-bold">{data.branches || 0}</p>
-              <p className="text-sm text-muted-foreground">Branches</p>
+              <p className="text-2xl font-bold">{data.clusters || 0}</p>
+              <p className="text-sm text-muted-foreground">Clusters</p>
             </div>
           </div>
           
@@ -256,6 +256,9 @@ function ExecutiveSummary({ data }: { data: any }) {
                   {data.netHeadcount2025 >= 0 ? `+${data.netHeadcount2025}` : data.netHeadcount2025}
                 </span>.</>
               ) : "No hiring data available for 2025 yet."}
+            </p>
+            <p className="text-sm text-muted-foreground mt-3">
+              The organization operates through <span className="font-semibold text-blue-600">{data.groups || 0} groups</span> spanning <span className="font-semibold text-emerald-600">{data.regions || 0} regions</span> and <span className="font-semibold text-purple-600">{data.clusters || 0} clusters</span>, providing extensive geographic and operational coverage across the workforce.
             </p>
           </div>
         </div>

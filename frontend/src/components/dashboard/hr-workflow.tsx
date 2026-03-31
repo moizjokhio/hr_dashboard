@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Search, ShieldAlert } from "lucide-react";
+import { CalendarClock, Clock, Search } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
@@ -8,6 +8,15 @@ const PROBATION_DAY_OPTIONS = ["15", "30", "45", "60", "75", "90", "180"] as con
 const NUMERIC_DAY_OPTIONS = [15, 30, 45, 60, 75, 90, 180] as const;
 const RETIREMENT_YEAR_OPTIONS = ["1", "2", "3", "5", "7", "10"] as const;
 const NUMERIC_RETIREMENT_YEAR_OPTIONS = [1, 2, 3, 5, 7, 10] as const;
+const CONTRACT_EXPIRY_FILTER_OPTIONS = [
+  { value: "30", label: "30d", maxDays: 30 },
+  { value: "60", label: "60d", maxDays: 60 },
+  { value: "90", label: "90d", maxDays: 90 },
+  { value: "180", label: "180d", maxDays: 180 },
+  { value: "365", label: "1y", maxDays: 365 },
+  { value: "730", label: "2y", maxDays: 730 },
+  { value: "1095", label: "3y", maxDays: 1095 },
+] as const;
 
 function toStartOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -60,20 +69,20 @@ interface WorkflowItem {
   DATE_PROBATION_END?: string;
   EMPLOYMENT_STATUS?: string;
   DATE_OF_BIRTH?: string;
-  ACTION_REASON?: string;
+  CONTRACT_END_DATE?: string;
   CONFIRMED_DATE?: string;
 }
 
 interface HRWorkflowProps {
   probationCliff: WorkflowItem[];
   retirementRadar: WorkflowItem[];
-  disciplinaryWatch: WorkflowItem[];
+  contractExpires: WorkflowItem[];
 }
 
 export function HRWorkflow({
   probationCliff,
   retirementRadar,
-  disciplinaryWatch,
+  contractExpires,
 }: HRWorkflowProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -95,13 +104,13 @@ export function HRWorkflow({
         type="retirement"
       />
 
-      {/* Disciplinary Watch */}
+      {/* Contract Expires */}
       <WorkflowCard
-        title="Disciplinary Watch"
-        icon={<ShieldAlert className="w-5 h-5 text-red-600" />}
-        description="Recent disciplinary actions"
-        items={disciplinaryWatch}
-        type="disciplinary"
+        title="Contract Expires"
+        icon={<CalendarClock className="w-5 h-5 text-red-600" />}
+        description="Upcoming contract end dates"
+        items={contractExpires}
+        type="contract"
       />
     </div>
   );
@@ -140,10 +149,11 @@ function WorkflowCard({
   icon: ReactNode;
   description: string;
   items: WorkflowItem[];
-  type: "probation" | "retirement" | "disciplinary";
+  type: "probation" | "retirement" | "contract";
 }) {
   const [dayFilter, setDayFilter] = useState<string>("30");
   const [retirementYearFilter, setRetirementYearFilter] = useState<string>("3");
+  const [contractExpiryFilter, setContractExpiryFilter] = useState<string>("1095");
   const [searchTerm, setSearchTerm] = useState("");
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -240,11 +250,47 @@ function WorkflowCard({
     }
   }, [normalizedSearch, retirementMatches, retirementYearFilter, type]);
 
+  const contractAll = useMemo(() => {
+    if (type !== "contract") return [] as Array<{ item: WorkflowItem; daysUntil: number }>;
+
+    return items
+      .map((item) => ({ item, daysUntil: getDaysUntil(item.CONTRACT_END_DATE) }))
+      .filter((entry): entry is { item: WorkflowItem; daysUntil: number } => entry.daysUntil !== null && entry.daysUntil >= 0)
+      .sort((a, b) => a.daysUntil - b.daysUntil);
+  }, [items, type]);
+
+  const contractMatches = useMemo(() => {
+    if (type !== "contract") return [] as Array<{ item: WorkflowItem; daysUntil: number }>;
+    return contractAll.filter(({ item }) => matchesSearch(item));
+  }, [contractAll, type, normalizedSearch]);
+
+  const filteredContract = useMemo(() => {
+    if (type !== "contract") return [] as Array<{ item: WorkflowItem; daysUntil: number }>;
+
+    const maxDays = Number(contractExpiryFilter);
+    return contractMatches.filter((entry) => entry.daysUntil <= maxDays);
+  }, [contractExpiryFilter, contractMatches, type]);
+
+  useEffect(() => {
+    if (type !== "contract") return;
+    if (!normalizedSearch || contractMatches.length === 0) return;
+
+    const maxRequiredDays = contractMatches.reduce((maxDays, entry) => Math.max(maxDays, entry.daysUntil), 0);
+    if (maxRequiredDays <= Number(contractExpiryFilter)) return;
+
+    const nextFilter = CONTRACT_EXPIRY_FILTER_OPTIONS.find((option) => option.maxDays >= maxRequiredDays);
+    if (nextFilter && nextFilter.value !== contractExpiryFilter) {
+      setContractExpiryFilter(nextFilter.value);
+    }
+  }, [contractExpiryFilter, contractMatches, normalizedSearch, type]);
+
   const rows =
     type === "probation"
       ? filteredProbation.map((entry) => entry.item)
       : type === "retirement"
       ? filteredRetirement.map((entry) => entry.item)
+      : type === "contract"
+      ? filteredContract.map((entry) => entry.item)
       : items;
 
   const count =
@@ -252,6 +298,8 @@ function WorkflowCard({
       ? filteredProbation.length
       : type === "retirement"
       ? filteredRetirement.length
+      : type === "contract"
+      ? filteredContract.length
       : items.length;
 
   const effectiveDescription =
@@ -262,6 +310,8 @@ function WorkflowCard({
           const [min, max] = RETIREMENT_YEAR_RANGES[retirementYearFilter] || [0, 10];
           return `Retiring ${min}-${max} years from now`;
         })()
+      : type === "contract"
+      ? `Contract ending in <= ${CONTRACT_EXPIRY_FILTER_OPTIONS.find((option) => option.value === contractExpiryFilter)?.label || "90d"}`
       : description;
 
   return (
@@ -279,7 +329,7 @@ function WorkflowCard({
         </span>
       </div>
 
-      {type === "probation" || type === "retirement" ? (
+      {type === "probation" || type === "retirement" || type === "contract" ? (
         <div className="p-3 border-b border-gray-100 bg-white space-y-2">
           <label className="text-xs text-gray-600 block">
             Search employee
@@ -309,7 +359,7 @@ function WorkflowCard({
                     ))}
                   </select>
                 </div>
-              ) : (
+              ) : type === "retirement" ? (
                 <div className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 pl-2 pr-1 py-1 text-blue-700">
                   <Clock className="w-3.5 h-3.5" />
                   <span className="text-[11px] font-semibold">Years</span>
@@ -322,6 +372,23 @@ function WorkflowCard({
                     {RETIREMENT_YEAR_OPTIONS.map((option) => (
                       <option key={option} value={option}>
                         {option}y
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 pl-2 pr-1 py-1 text-red-700">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span className="text-[11px] font-semibold">Window</span>
+                  <select
+                    value={contractExpiryFilter}
+                    onChange={(e) => setContractExpiryFilter(e.target.value)}
+                    className="bg-transparent text-[11px] font-semibold outline-none"
+                    aria-label="Filter contract expiry window"
+                  >
+                    {CONTRACT_EXPIRY_FILTER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
                       </option>
                     ))}
                   </select>
@@ -342,7 +409,7 @@ function WorkflowCard({
                   ? "End Date"
                   : type === "retirement"
                   ? "Years Left"
-                  : "Reason"}
+                  : "End Date"}
               </th>
             </tr>
           </thead>
@@ -381,11 +448,10 @@ function WorkflowCard({
                         </span>
                       </div>
                     ) : (
-                      <span
-                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 max-w-[120px] truncate"
-                        title={item.ACTION_REASON}
-                      >
-                        {item.ACTION_REASON}
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                        {item.CONTRACT_END_DATE
+                          ? new Date(item.CONTRACT_END_DATE).toLocaleDateString()
+                          : "N/A"}
                       </span>
                     )}
                   </td>
@@ -397,10 +463,10 @@ function WorkflowCard({
       </div>
       <div className="p-3 border-t border-gray-100 bg-gray-50/50 rounded-b-xl text-center">
         <Link
-          href={type === "disciplinary" ? "/da-cases" : "/employees"}
+          href="/employees"
           className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors block w-full h-full"
         >
-          {type === "disciplinary" ? "View DA Dashboard" : "View All"}
+          View All
         </Link>
       </div>
     </div>

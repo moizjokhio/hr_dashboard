@@ -21,7 +21,7 @@ interface DashboardContentProps {
   workflow: {
     probationCliff: any[];
     retirementRadar: any[];
-    disciplinaryWatch: any[];
+    contractExpires: any[];
   };
   orgStructure: {
     spanOfControl: { name: string; value: number }[];

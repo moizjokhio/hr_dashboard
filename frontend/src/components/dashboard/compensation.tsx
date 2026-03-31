@@ -7,9 +7,68 @@ interface CompensationProps {
   salaryByGrade: Record<string, number[]>;
 }
 
+const PRIORITY_GRADE_ORDER = [
+  "CON",
+  "OG-4",
+  "OG-3",
+  "OG-2",
+  "OG-1",
+  "AVP-1",
+  "AVP-II",
+  "RVP",
+  "VP",
+  "VP-1",
+  "VP-11",
+  "SVP",
+  "SVP-1",
+  "SVP-11",
+  "REST SVP",
+  "EVP",
+  "EVP-1",
+  "EVP-11",
+  "EVP-111",
+  "REST EVP",
+  "SEVP",
+  "SEVP-1",
+  "SEVP-11",
+  "PRES",
+] as const;
+
+function normalizeGradeForOrder(value: string) {
+  return value
+    .toUpperCase()
+    .replace(/_/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/\bI\b/g, "1")
+    .replace(/\bII\b/g, "11")
+    .replace(/\bIII\b/g, "111")
+    .trim();
+}
+
+const ORDER_INDEX = new Map(
+  PRIORITY_GRADE_ORDER.map((grade, idx) => [normalizeGradeForOrder(grade), idx])
+);
+
 export function Compensation({ salaryByGrade }: CompensationProps) {
   const chartData = useMemo(() => {
-    const categories = Object.keys(salaryByGrade).sort();
+    const categories = Object.keys(salaryByGrade).sort((a, b) => {
+      const aNorm = normalizeGradeForOrder(a);
+      const bNorm = normalizeGradeForOrder(b);
+
+      const aIdx = ORDER_INDEX.get(aNorm);
+      const bIdx = ORDER_INDEX.get(bNorm);
+
+      const aKnown = aIdx !== undefined;
+      const bKnown = bIdx !== undefined;
+
+      if (aKnown && bKnown) {
+        return (aIdx as number) - (bIdx as number);
+      }
+      if (aKnown) return -1;
+      if (bKnown) return 1;
+
+      return aNorm.localeCompare(bNorm);
+    });
     const avgData: number[] = [];
     const minData: number[] = [];
     const maxData: number[] = [];

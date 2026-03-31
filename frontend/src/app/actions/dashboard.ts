@@ -123,22 +123,24 @@ export async function getWorkflowWidgets() {
        ORDER BY ("DATE_OF_BIRTH" + INTERVAL '60 years') ASC`
     );
 
-    // 3. Disciplinary Watch - Recent DA MIS Cases
-    const disciplinaryRes = await client.query(
-      `SELECT 
-         emp_number as "EMPLOYEE_NUMBER",
-         name_of_staff_reported as "EMPLOYEE_FULL_NAME",
-         misconduct_category as "ACTION_REASON",
-         branch_office as "DEPARTMENT_NAME"
-       FROM da_mis_cases 
-       ORDER BY created_at DESC
-       LIMIT 10`
+    // 3. Contract Expires
+    // Active payroll-eligible employees identified as contract via grade/cadre/type
+    const contractExpiresRes = await client.query(
+      `SELECT "EMPLOYEE_NUMBER", "EMPLOYEE_FULL_NAME", "CONTRACT_END_DATE", "DEPARTMENT_NAME", "EMPLOYMENT_STATUS"
+       FROM odbc
+       WHERE LOWER(BTRIM("EMPLOYMENT_STATUS")) = 'active - payroll eligible'
+       AND (
+         UPPER(BTRIM(COALESCE("GRADE", ''))) = 'CON'
+         OR UPPER(BTRIM(COALESCE("CADRE", ''))) = 'CON'
+         OR UPPER(BTRIM(COALESCE("CONTRACT_TYPE", ''))) LIKE 'CON%'
+       )
+       ORDER BY "CONTRACT_END_DATE" ASC NULLS LAST`
     );
 
     return {
       probationCliff: probationRes.rows,
       retirementRadar: retirementRes.rows,
-      disciplinaryWatch: disciplinaryRes.rows
+      contractExpires: contractExpiresRes.rows
     };
   } catch (error) {
     console.error("Error fetching workflow widgets:", error);
@@ -148,7 +150,7 @@ export async function getWorkflowWidgets() {
         console.error("  ⚠️  SSL Certificate validation failed - check frontend database connection settings");
       }
     }
-    return { probationCliff: [], retirementRadar: [], disciplinaryWatch: [] };
+    return { probationCliff: [], retirementRadar: [], contractExpires: [] };
   } finally {
     if (client) client.release();
   }
@@ -183,14 +185,15 @@ export async function getOrgStructureMetrics() {
        ORDER BY mc.report_count DESC`
     );
 
-    // 2. Location Heatmap
-    const locationRes = await client.query(
-      `SELECT "LOCATION_NAME", COUNT(*) as count 
-       FROM odbc 
-       WHERE LOWER(BTRIM("EMPLOYMENT_STATUS")) = 'active - payroll eligible'
-       GROUP BY "LOCATION_NAME"
-       ORDER BY count DESC
-       LIMIT 10`
+    // 2. Cluster Headcount (Active only, excluding NaN/blank)
+    const clusterRes = await client.query(
+      `SELECT BTRIM("CLUSTERS") as "CLUSTER_NAME", COUNT(*) as count
+       FROM odbc
+       WHERE LOWER(BTRIM("EMPLOYMENT_STATUS")) LIKE 'active%'
+         AND NULLIF(BTRIM("CLUSTERS"), '') IS NOT NULL
+         AND LOWER(BTRIM("CLUSTERS")) <> 'nan'
+       GROUP BY BTRIM("CLUSTERS")
+       ORDER BY count DESC`
     );
 
     return {
@@ -200,8 +203,8 @@ export async function getOrgStructureMetrics() {
         employeeNumber: normalizeEmployeeNumber(row.MANAGER_EMP_NO),
         departmentName: normalizeDepartmentName(row.MANAGER_DEPARTMENT_NAME)
       })),
-      locationHeatmap: locationRes.rows.map(row => ({
-        name: row.LOCATION_NAME,
+      locationHeatmap: clusterRes.rows.map(row => ({
+        name: row.CLUSTER_NAME,
         value: parseInt(row.count, 10)
       }))
     };
@@ -226,16 +229,24 @@ export async function getCompensationMetrics() {
     // Salary Distribution by Grade
     // We fetch raw data and let frontend/chart library handle boxplot stats or aggregation
     const salaryRes = await client.query(
-      `SELECT "GRADE", "GROSS_SALARY" 
-       FROM odbc 
-       WHERE "GROSS_SALARY" IS NOT NULL AND "GRADE" IS NOT NULL`
+      `SELECT
+         COALESCE(NULLIF(BTRIM("GRADE"), ''), NULLIF(BTRIM("CADRE"), '')) as "GRADE",
+         "GROSS_SALARY"
+       FROM odbc
+       WHERE "GROSS_SALARY" IS NOT NULL
+         AND LOWER(BTRIM("EMPLOYMENT_STATUS")) LIKE 'active%'
+         AND COALESCE(NULLIF(BTRIM("GRADE"), ''), NULLIF(BTRIM("CADRE"), '')) IS NOT NULL
+         AND LOWER(COALESCE(NULLIF(BTRIM("GRADE"), ''), NULLIF(BTRIM("CADRE"), ''))) <> 'nan'`
     );
 
     // Group by Grade for easier consumption
     const salaryByGrade: Record<string, number[]> = {};
     salaryRes.rows.forEach(row => {
-      const grade = row.GRADE;
+      const grade = String(row.GRADE).trim();
       const salary = parseFloat(row.GROSS_SALARY);
+      if (!Number.isFinite(salary)) {
+        return;
+      }
       if (!salaryByGrade[grade]) {
         salaryByGrade[grade] = [];
       }

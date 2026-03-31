@@ -21,11 +21,17 @@ function buildPgConnectionString(rawUrl: string): string {
 
 const pgConnectionString = buildPgConnectionString(connectionString);
 
+const isLocalDb = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+
 const pool = new Pool({
   connectionString: pgConnectionString,
-  ssl: connectionString.includes('localhost') ? false : {
+  ssl: isLocalDb ? false : {
     rejectUnauthorized: false,
   },
+  // Fail fast in dev when network DB is slow/unreachable so UI can render fallbacks.
+  connectionTimeoutMillis: Number(process.env.PG_CONNECTION_TIMEOUT_MS || 5000),
+  query_timeout: Number(process.env.PG_QUERY_TIMEOUT_MS || 15000),
+  idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || 30000),
 });
 
 export default pool;
