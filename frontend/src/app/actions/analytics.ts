@@ -9,6 +9,28 @@ function normalizeName(name: string | null): string {
   return name.replace(/^\d+\./g, '').trim();
 }
 
+function quoteIdentifier(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function buildMonthSortExpr(columnExpr: string): string {
+  return `CASE LOWER(BTRIM(COALESCE(${columnExpr}::text, '')))
+    WHEN 'jan' THEN 1 WHEN 'january' THEN 1
+    WHEN 'feb' THEN 2 WHEN 'february' THEN 2
+    WHEN 'mar' THEN 3 WHEN 'march' THEN 3
+    WHEN 'apr' THEN 4 WHEN 'april' THEN 4
+    WHEN 'may' THEN 5
+    WHEN 'jun' THEN 6 WHEN 'june' THEN 6
+    WHEN 'jul' THEN 7 WHEN 'july' THEN 7
+    WHEN 'aug' THEN 8 WHEN 'august' THEN 8
+    WHEN 'sep' THEN 9 WHEN 'sept' THEN 9 WHEN 'september' THEN 9
+    WHEN 'oct' THEN 10 WHEN 'october' THEN 10
+    WHEN 'nov' THEN 11 WHEN 'november' THEN 11
+    WHEN 'dec' THEN 12 WHEN 'december' THEN 12
+    ELSE NULL
+  END`;
+}
+
 export async function getHeadcountAnalytics() {
   const client = await pool.connect();
   try {
@@ -164,6 +186,57 @@ export async function getAttritionAnalytics() {
 export async function getHiringInsights(year: number = 2025) {
   const client = await pool.connect();
   try {
+    type MonthTopRow = {
+      month: string;
+      month_num: number;
+      name: string;
+      value: number;
+      rank: number;
+    };
+
+    const buildDemoTopSeries = (
+      names: string[],
+      base: number
+    ): { month: string; month_num: number; name: string; value: number }[] => {
+      const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return monthLabels.map((month, idx) => {
+        const monthNum = idx + 1;
+        const name = names[(idx + year) % names.length];
+        const value = base + ((idx * 3 + year) % 9) + (idx % 4);
+        return {
+          month,
+          month_num: monthNum,
+          name,
+          value,
+        };
+      });
+    };
+
+    const buildDemoTopBreakdown = (
+      names: string[],
+      base: number
+    ): MonthTopRow[] => {
+      const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const result: MonthTopRow[] = [];
+
+      monthLabels.forEach((month, idx) => {
+        const monthNum = idx + 1;
+        for (let rank = 1; rank <= 5; rank += 1) {
+          const name = names[(idx + rank + year) % names.length];
+          const value = Math.max(1, base + 8 - rank + ((idx + year + rank) % 4));
+          result.push({
+            month,
+            month_num: monthNum,
+            name,
+            value,
+            rank,
+          });
+        }
+      });
+
+      return result;
+    };
+
     // Hires by year
     const hiringByYear = await client.query(
       `SELECT EXTRACT(YEAR FROM "DATE_OF_JOIN"::date)::int as year, COUNT(*) as value
@@ -275,6 +348,208 @@ export async function getHiringInsights(year: number = 2025) {
        ORDER BY 1 ASC`
     );
 
+    // Attempt to auto-detect a hiring MIS table for month-wise top recruiter/source organization.
+    const metadata = await client.query(
+      `SELECT table_schema, table_name, LOWER(column_name) as column_name, data_type
+       FROM information_schema.columns
+       WHERE table_schema NOT IN ('pg_catalog', 'information_schema')`
+    );
+
+    const recruiterCandidates = [
+      'recruiter_name',
+      'recruiter',
+      'hired_by',
+      'recruitment_by',
+      'recruitment_owner',
+      'talent_partner',
+    ];
+    const organizationCandidates = [
+      'previous_organization',
+      'previous_organisation',
+      'previous_org',
+      'source_organization',
+      'source_organisation',
+      'candidate_previous_organization',
+      'candidate_previous_organisation',
+      'organization',
+      'organisation',
+      'company_name',
+    ];
+    const monthCandidates = ['month', 'hire_month', 'hiring_month'];
+    const yearCandidates = ['year', 'hire_year', 'hiring_year'];
+    const dateCandidates = ['date_of_join', 'joining_date', 'hire_date', 'hiring_date', 'date'];
+
+    type TableMeta = {
+      schema: string;
+      table: string;
+      columns: Record<string, { original: string; dataType: string }>;
+    };
+
+    const byTable = new Map<string, TableMeta>();
+    for (const row of metadata.rows) {
+      const key = `${row.table_schema}.${row.table_name}`;
+      if (!byTable.has(key)) {
+        byTable.set(key, {
+          schema: row.table_schema,
+          table: row.table_name,
+          columns: {},
+        });
+      }
+      byTable.get(key)!.columns[row.column_name] = {
+        original: row.column_name,
+        dataType: row.data_type,
+      };
+    }
+
+    const pickColumn = (cols: Record<string, { original: string; dataType: string }>, names: string[]) =>
+      names.find((n) => cols[n]);
+
+    let topRecruitersByMonth: { month: string; month_num: number; name: string; value: number }[] = [];
+    let topOrganizationsByMonth: { month: string; month_num: number; name: string; value: number }[] = [];
+    let recruiterMonthlyBreakdown: MonthTopRow[] = [];
+    let organizationMonthlyBreakdown: MonthTopRow[] = [];
+    let hiringMisSource: {
+      table: string;
+      recruiterColumn: string;
+      organizationColumn: string;
+      monthSource: string;
+    } | null = null;
+    let usingDemoHiringMisData = false;
+
+    const selectedTable = Array.from(byTable.values())
+      .map((t) => {
+        const recruiterCol = pickColumn(t.columns, recruiterCandidates);
+        const organizationCol = pickColumn(t.columns, organizationCandidates);
+        const dateCol = pickColumn(t.columns, dateCandidates);
+        const monthCol = pickColumn(t.columns, monthCandidates);
+        const yearCol = pickColumn(t.columns, yearCandidates);
+
+        let score = 0;
+        if (recruiterCol) score += 3;
+        if (organizationCol) score += 3;
+        if (dateCol) score += 3;
+        if (monthCol) score += 2;
+        if (yearCol) score += 1;
+        if (t.table.includes('mis')) score += 1;
+        if (t.table.includes('hiring')) score += 2;
+
+        return {
+          ...t,
+          recruiterCol,
+          organizationCol,
+          dateCol,
+          monthCol,
+          yearCol,
+          score,
+        };
+      })
+      .filter((t) => t.recruiterCol && t.organizationCol && (t.dateCol || t.monthCol))
+      .sort((a, b) => b.score - a.score)[0];
+
+    if (selectedTable) {
+      const tableExpr = `${quoteIdentifier(selectedTable.schema)}.${quoteIdentifier(selectedTable.table)}`;
+      const recruiterExpr = quoteIdentifier(selectedTable.recruiterCol!);
+      const orgExpr = quoteIdentifier(selectedTable.organizationCol!);
+
+      let monthLabelExpr = "'Unknown'";
+      let monthNumExpr = '0';
+      let yearWhere = 'TRUE';
+      let monthSource = 'none';
+
+      if (selectedTable.dateCol) {
+        const dateExpr = `${quoteIdentifier(selectedTable.dateCol)}::date`;
+        monthLabelExpr = `TO_CHAR(${dateExpr}, 'Mon')`;
+        monthNumExpr = `EXTRACT(MONTH FROM ${dateExpr})::int`;
+        yearWhere = `EXTRACT(YEAR FROM ${dateExpr}) = $1`;
+        monthSource = selectedTable.dateCol;
+      } else if (selectedTable.monthCol) {
+        const monthExpr = quoteIdentifier(selectedTable.monthCol);
+        monthLabelExpr = `INITCAP(BTRIM(COALESCE(${monthExpr}::text, 'Unknown')))`;
+        monthNumExpr = buildMonthSortExpr(monthExpr);
+        if (selectedTable.yearCol) {
+          const yearExpr = quoteIdentifier(selectedTable.yearCol);
+          yearWhere = `NULLIF(REGEXP_REPLACE(COALESCE(${yearExpr}::text, ''), '[^0-9]', '', 'g'), '')::int = $1`;
+        }
+        monthSource = selectedTable.monthCol;
+      }
+
+      const recruiterRankedRes = await client.query(
+        `WITH base AS (
+           SELECT
+             ${monthLabelExpr} as month,
+             ${monthNumExpr} as month_num,
+             COALESCE(NULLIF(BTRIM(${recruiterExpr}::text), ''), 'Unknown') as name
+           FROM ${tableExpr}
+           WHERE ${yearWhere}
+         ), ranked AS (
+           SELECT month, month_num, name, COUNT(*)::int as value,
+                  ROW_NUMBER() OVER (PARTITION BY month_num ORDER BY COUNT(*) DESC, name ASC) as rn
+           FROM base
+           WHERE month_num IS NOT NULL
+           GROUP BY month, month_num, name
+         )
+         SELECT month, month_num, name, value, rn as rank
+         FROM ranked
+         WHERE rn <= 5
+         ORDER BY month_num, rn`,
+        [year]
+      );
+
+      const organizationRankedRes = await client.query(
+        `WITH base AS (
+           SELECT
+             ${monthLabelExpr} as month,
+             ${monthNumExpr} as month_num,
+             COALESCE(NULLIF(BTRIM(${orgExpr}::text), ''), 'Unknown') as name
+           FROM ${tableExpr}
+           WHERE ${yearWhere}
+         ), ranked AS (
+           SELECT month, month_num, name, COUNT(*)::int as value,
+                  ROW_NUMBER() OVER (PARTITION BY month_num ORDER BY COUNT(*) DESC, name ASC) as rn
+           FROM base
+           WHERE month_num IS NOT NULL
+           GROUP BY month, month_num, name
+         )
+         SELECT month, month_num, name, value, rn as rank
+         FROM ranked
+         WHERE rn <= 5
+         ORDER BY month_num, rn`,
+        [year]
+      );
+
+      recruiterMonthlyBreakdown = recruiterRankedRes.rows;
+      organizationMonthlyBreakdown = organizationRankedRes.rows;
+      topRecruitersByMonth = recruiterMonthlyBreakdown.filter((row) => Number(row.rank) === 1);
+      topOrganizationsByMonth = organizationMonthlyBreakdown.filter((row) => Number(row.rank) === 1);
+      hiringMisSource = {
+        table: `${selectedTable.schema}.${selectedTable.table}`,
+        recruiterColumn: selectedTable.recruiterCol!,
+        organizationColumn: selectedTable.organizationCol!,
+        monthSource,
+      };
+    }
+
+    if (!hiringMisSource || topRecruitersByMonth.length === 0 || topOrganizationsByMonth.length === 0) {
+      topRecruitersByMonth = buildDemoTopSeries(
+        ['Ali Raza', 'Sara Khan', 'Ahmed Tariq', 'Hina Noor', 'Usman Malik', 'Fatima Iqbal'],
+        5
+      );
+      topOrganizationsByMonth = buildDemoTopSeries(
+        ['HBL', 'UBL', 'MCB Bank', 'Bank Alfalah', 'Meezan Bank', 'HabibMetro'],
+        4
+      );
+      recruiterMonthlyBreakdown = buildDemoTopBreakdown(
+        ['Ali Raza', 'Sara Khan', 'Ahmed Tariq', 'Hina Noor', 'Usman Malik', 'Fatima Iqbal', 'Ayesha Ali'],
+        5
+      );
+      organizationMonthlyBreakdown = buildDemoTopBreakdown(
+        ['HBL', 'UBL', 'MCB Bank', 'Bank Alfalah', 'Meezan Bank', 'HabibMetro', 'Allied Bank'],
+        4
+      );
+      usingDemoHiringMisData = true;
+      hiringMisSource = null;
+    }
+
     return {
       hiringByYear: hiringByYear.rows,
       selectedYear: year,
@@ -287,6 +562,12 @@ export async function getHiringInsights(year: number = 2025) {
       contractTypeHires: contractTypeHires.rows,
       cadreHires: cadreHires.rows,
       yoyComparison: yoyComparison.rows,
+      topRecruitersByMonth,
+      topOrganizationsByMonth,
+      recruiterMonthlyBreakdown,
+      organizationMonthlyBreakdown,
+      hiringMisSource,
+      usingDemoHiringMisData,
     };
   } finally {
     client.release();

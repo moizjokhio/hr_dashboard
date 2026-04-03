@@ -13,6 +13,7 @@ import {
   Users,
   TrendingUp,
   DollarSign,
+  X,
   Heart,
   AlertTriangle,
   BarChart3,
@@ -362,8 +363,78 @@ function ExecutiveSummary({ data }: { data: any }) {
 
 // ==================== HIRING INSIGHTS ====================
 function HiringInsights({ data, selectedYear, setSelectedYear, isPending }: { data: any; selectedYear: number; setSelectedYear: (year: number) => void; isPending: boolean }) {
+  const [recruiterChartType, setRecruiterChartType] = useState<"bar" | "line" | "area" | "pie">("bar");
+  const [organizationChartType, setOrganizationChartType] = useState<"bar" | "line" | "area" | "pie">("bar");
+  const [detailModal, setDetailModal] = useState<{ kind: "recruiter" | "organization"; month: string; monthNum: number } | null>(null);
+
   // Get available years from the data
   const availableYears = data.hiringByYear?.map((d: any) => d.year) || [];
+
+  const buildDynamicMonthlyChart = (
+    title: string,
+    rows: any[],
+    baseColor: string,
+    chartType: "bar" | "line" | "area" | "pie"
+  ) => {
+    if (chartType === "pie") {
+      const uniqueMap = new Map<string, number>();
+      (rows || []).forEach((row: any) => {
+        const current = uniqueMap.get(row.name) || 0;
+        uniqueMap.set(row.name, current + Number(row.value || 0));
+      });
+
+      const pieData = Array.from(uniqueMap.entries()).map(([name, value]) => ({
+        name,
+        value,
+        itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 2 },
+      }));
+
+      return {
+        grid: { show: false },
+        tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
+        title: { text: title, left: "center" },
+        legend: { orient: "vertical", right: 20, top: "center" },
+        xAxis: undefined,
+        yAxis: undefined,
+        series: [{
+          type: "pie",
+          radius: ["30%", "70%"],
+          data: pieData,
+          label: { show: true, formatter: "{b}\n{c}" },
+        }],
+      };
+    }
+
+    const seriesType = chartType === "area" ? "line" : chartType;
+
+    return {
+      tooltip: {
+        trigger: "axis",
+        formatter: (params: any) => {
+          const point = params?.[0];
+          const idx = point?.dataIndex ?? 0;
+          const row = rows?.[idx];
+          return `${point?.axisValue || ""}<br/>${row?.name || "N/A"}: ${row?.value || 0}`;
+        },
+      },
+      title: { text: title, left: "center" },
+      xAxis: { type: "category", data: rows?.map((d: any) => d.month) || [] },
+      yAxis: { type: "value", name: "Hires" },
+      series: [{
+        type: seriesType,
+        smooth: seriesType === "line",
+        data: rows?.map((d: any) => d.value) || [],
+        itemStyle: { color: baseColor, borderRadius: seriesType === "bar" ? [4, 4, 0, 0] : 0 },
+        areaStyle: chartType === "area" ? { opacity: 0.25, color: baseColor } : undefined,
+        lineStyle: seriesType === "line" ? { width: 3, color: baseColor } : undefined,
+        label: {
+          show: true,
+          position: "top",
+          formatter: (params: any) => rows?.[params.dataIndex]?.name || "",
+        },
+      }],
+    };
+  };
   
   const yearlyHiringChart = {
     tooltip: { trigger: "axis" },
@@ -434,6 +505,54 @@ function HiringInsights({ data, selectedYear, setSelectedYear, isPending }: { da
     }],
   };
 
+  const topRecruitersByMonthChart = buildDynamicMonthlyChart(
+    `${selectedYear} Top Recruiter by Month`,
+    data.topRecruitersByMonth || [],
+    "#0ea5e9",
+    recruiterChartType
+  );
+
+  const topOrganizationsByMonthChart = buildDynamicMonthlyChart(
+    `${selectedYear} Top Source Organization by Month`,
+    data.topOrganizationsByMonth || [],
+    "#14b8a6",
+    organizationChartType
+  );
+
+  const recruiterChartEvents = {
+    click: (params: any) => {
+      const row = data.topRecruitersByMonth?.[params?.dataIndex ?? -1];
+      if (row) {
+        setDetailModal({
+          kind: "recruiter",
+          month: row.month,
+          monthNum: Number(row.month_num),
+        });
+      }
+    },
+  };
+
+  const organizationChartEvents = {
+    click: (params: any) => {
+      const row = data.topOrganizationsByMonth?.[params?.dataIndex ?? -1];
+      if (row) {
+        setDetailModal({
+          kind: "organization",
+          month: row.month,
+          monthNum: Number(row.month_num),
+        });
+      }
+    },
+  };
+
+  const detailRows = detailModal
+    ? (detailModal.kind === "recruiter" ? data.recruiterMonthlyBreakdown : data.organizationMonthlyBreakdown)
+        ?.filter((r: any) => Number(r.month_num) === Number(detailModal.monthNum))
+        ?.sort((a: any, b: any) => Number(a.rank) - Number(b.rank)) || []
+    : [];
+
+  const detailTotal = detailRows.reduce((sum: number, row: any) => sum + Number(row.value || 0), 0);
+
   return (
     <div className="space-y-6">
       {/* Year Selector */}
@@ -492,9 +611,118 @@ function HiringInsights({ data, selectedYear, setSelectedYear, isPending }: { da
           <div className="bg-card p-6 rounded-xl border shadow-sm"><ReactECharts option={monthlyHiring2025Chart} style={{ height: "350px" }} /></div>
           <div className="bg-card p-6 rounded-xl border shadow-sm"><ReactECharts option={genderHires2025Chart} style={{ height: "350px" }} /></div>
           <div className="bg-card p-6 rounded-xl border shadow-sm"><ReactECharts option={groupHires2025Chart} style={{ height: "350px" }} /></div>
+          <div className="bg-card p-6 rounded-xl border shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-muted-foreground">Click a point to open monthly details</p>
+              <select
+                value={recruiterChartType}
+                onChange={(e) => setRecruiterChartType(e.target.value as "bar" | "line" | "area" | "pie")}
+                className="px-3 py-1.5 border rounded-lg bg-background text-xs"
+              >
+                <option value="bar">Bar</option>
+                <option value="line">Line</option>
+                <option value="area">Area</option>
+                <option value="pie">Pie</option>
+              </select>
+            </div>
+            <ReactECharts key={`recruiter-${recruiterChartType}`} notMerge={true} option={topRecruitersByMonthChart} onEvents={recruiterChartEvents} style={{ height: "350px" }} />
+          </div>
+          <div className="bg-card p-6 rounded-xl border shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-muted-foreground">Click a point to open monthly details</p>
+              <select
+                value={organizationChartType}
+                onChange={(e) => setOrganizationChartType(e.target.value as "bar" | "line" | "area" | "pie")}
+                className="px-3 py-1.5 border rounded-lg bg-background text-xs"
+              >
+                <option value="bar">Bar</option>
+                <option value="line">Line</option>
+                <option value="area">Area</option>
+                <option value="pie">Pie</option>
+              </select>
+            </div>
+            <ReactECharts key={`organization-${organizationChartType}`} notMerge={true} option={topOrganizationsByMonthChart} onEvents={organizationChartEvents} style={{ height: "350px" }} />
+          </div>
           <div className="bg-card p-6 rounded-xl border shadow-sm lg:col-span-2"><ReactECharts option={gradeChart} style={{ height: "350px" }} /></div>
           <div className="bg-card p-6 rounded-xl border shadow-sm lg:col-span-2"><ReactECharts option={yoyChart} style={{ height: "400px" }} /></div>
         </div>
+
+        {data.usingDemoHiringMisData && (
+          <div className="mt-4 text-sm text-muted-foreground">
+            Demo mode: recruiter and source-organization charts are currently showing sample data until hiring MIS is available.
+          </div>
+        )}
+
+        {!data.usingDemoHiringMisData && data.hiringMisSource && (
+          <div className="mt-4 text-xs text-muted-foreground">
+            Source: {data.hiringMisSource.table} | recruiter: {data.hiringMisSource.recruiterColumn} | organization: {data.hiringMisSource.organizationColumn} | month source: {data.hiringMisSource.monthSource}
+          </div>
+        )}
+
+        {detailModal && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-card border rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-auto">
+              <div className="sticky top-0 bg-card border-b px-5 py-4 flex items-start justify-between">
+                <div>
+                  <h4 className="text-lg font-semibold">
+                    {detailModal.kind === "recruiter" ? "Top Recruiters" : "Top Source Organizations"} - {detailModal.month} {selectedYear}
+                  </h4>
+                  <p className="text-sm text-muted-foreground mt-1">Top 5 breakdown with monthly contribution share</p>
+                </div>
+                <button
+                  onClick={() => setDetailModal(null)}
+                  className="p-2 rounded-lg hover:bg-muted"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Total Hires (Top 5)</p>
+                    <p className="text-2xl font-bold">{detailTotal}</p>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Top Entity</p>
+                    <p className="text-base font-semibold truncate">{detailRows[0]?.name || "N/A"}</p>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Top Share</p>
+                    <p className="text-2xl font-bold">
+                      {detailTotal > 0 ? `${(((detailRows[0]?.value || 0) / detailTotal) * 100).toFixed(1)}%` : "0%"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto border rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40 border-b">
+                      <tr>
+                        <th className="text-left p-3 font-semibold">Rank</th>
+                        <th className="text-left p-3 font-semibold">Name</th>
+                        <th className="text-left p-3 font-semibold">Hires</th>
+                        <th className="text-left p-3 font-semibold">Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailRows.map((row: any, idx: number) => (
+                        <tr key={`${row.name}-${idx}`} className="border-b hover:bg-muted/20">
+                          <td className="p-3">#{row.rank}</td>
+                          <td className="p-3 font-medium">{row.name}</td>
+                          <td className="p-3">{row.value}</td>
+                          <td className="p-3">
+                            {detailTotal > 0 ? `${((Number(row.value) / detailTotal) * 100).toFixed(1)}%` : "0%"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
