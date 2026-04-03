@@ -1009,6 +1009,83 @@ export async function getExecutiveSummary() {
        FROM odbc`
     );
 
+    const pwdTableRes = await client.query(
+      `SELECT to_regclass('public.pwd_employees') as table_name`
+    );
+    const hasPwdTable = Boolean(pwdTableRes.rows[0]?.table_name);
+
+    let activePwdMales = 0;
+    let activePwdFemales = 0;
+    let activePwdUnknown = 0;
+    let activePwdTotal = 0;
+    let pwdByGroup: { name: string; value: number }[] = [];
+    let pwdByPosition: { name: string; value: number }[] = [];
+    let pwdByGrade: { name: string; value: number }[] = [];
+    let pwdByCategory: { name: string; value: number }[] = [];
+
+    if (hasPwdTable) {
+      const pwdGenderMetrics = await client.query(
+        `SELECT
+           COUNT(*) FILTER (WHERE UPPER(BTRIM(COALESCE(gender, ''))) IN ('M', 'MALE')) as active_pwd_males,
+           COUNT(*) FILTER (WHERE UPPER(BTRIM(COALESCE(gender, ''))) IN ('F', 'FEMALE')) as active_pwd_females,
+           COUNT(*) FILTER (
+             WHERE (
+               UPPER(BTRIM(COALESCE(gender, ''))) NOT IN ('M', 'MALE', 'F', 'FEMALE')
+               OR BTRIM(COALESCE(gender, '')) = ''
+             )
+           ) as active_pwd_unknown,
+           COUNT(*) as active_pwd_total
+         FROM pwd_employees
+         WHERE LOWER(BTRIM(COALESCE(user_status, ''))) = 'active - payroll eligible'`
+      );
+
+      const pwdGroupRes = await client.query(
+        `SELECT COALESCE(NULLIF(BTRIM(group_name), ''), 'Unknown') as name, COUNT(*)::int as value
+         FROM pwd_employees
+         WHERE LOWER(BTRIM(COALESCE(user_status, ''))) = 'active - payroll eligible'
+         GROUP BY 1
+         ORDER BY value DESC
+         LIMIT 12`
+      );
+
+      const pwdPositionRes = await client.query(
+        `SELECT COALESCE(NULLIF(BTRIM(position_name), ''), 'Unknown') as name, COUNT(*)::int as value
+         FROM pwd_employees
+         WHERE LOWER(BTRIM(COALESCE(user_status, ''))) = 'active - payroll eligible'
+         GROUP BY 1
+         ORDER BY value DESC
+         LIMIT 12`
+      );
+
+      const pwdGradeRes = await client.query(
+        `SELECT COALESCE(NULLIF(BTRIM(grade_name), ''), 'Unknown') as name, COUNT(*)::int as value
+         FROM pwd_employees
+         WHERE LOWER(BTRIM(COALESCE(user_status, ''))) = 'active - payroll eligible'
+         GROUP BY 1
+         ORDER BY value DESC
+         LIMIT 12`
+      );
+
+      const pwdCategoryRes = await client.query(
+        `SELECT COALESCE(NULLIF(BTRIM(category), ''), 'Unknown') as name, COUNT(*)::int as value
+         FROM pwd_employees
+         WHERE LOWER(BTRIM(COALESCE(user_status, ''))) = 'active - payroll eligible'
+         GROUP BY 1
+         ORDER BY value DESC
+         LIMIT 12`
+      );
+
+      activePwdMales = parseInt(pwdGenderMetrics.rows[0]?.active_pwd_males || '0');
+      activePwdFemales = parseInt(pwdGenderMetrics.rows[0]?.active_pwd_females || '0');
+      activePwdUnknown = parseInt(pwdGenderMetrics.rows[0]?.active_pwd_unknown || '0');
+      activePwdTotal = parseInt(pwdGenderMetrics.rows[0]?.active_pwd_total || '0');
+
+      pwdByGroup = pwdGroupRes.rows;
+      pwdByPosition = pwdPositionRes.rows;
+      pwdByGrade = pwdGradeRes.rows;
+      pwdByCategory = pwdCategoryRes.rows;
+    }
+
     const m = countMetrics.rows[0];
     const avg = avgMetrics.rows[0];
     const hc = headcountChange.rows[0];
@@ -1032,6 +1109,14 @@ export async function getExecutiveSummary() {
       netHeadcount2025: parseInt(hc.hires_2025 || '0') - parseInt(hc.terms_2025 || '0'),
       netHeadcount2024: parseInt(hc.hires_2024 || '0') - parseInt(hc.terms_2024 || '0'),
       hireGrowthRate: hc.hires_2024 > 0 ? ((parseInt(hc.hires_2025 || '0') - parseInt(hc.hires_2024 || '0')) / parseInt(hc.hires_2024 || '1') * 100).toFixed(1) : '0',
+      activePwdMales,
+      activePwdFemales,
+      activePwdUnknown,
+      activePwdTotal,
+      pwdByGroup,
+      pwdByPosition,
+      pwdByGrade,
+      pwdByCategory,
     };
   } finally {
     client.release();

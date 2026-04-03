@@ -170,6 +170,8 @@ export function AnalyticsContent({
 
 // ==================== EXECUTIVE SUMMARY ====================
 function ExecutiveSummary({ data }: { data: any }) {
+  const [pwdBreakdownType, setPwdBreakdownType] = useState<"group" | "position" | "grade" | "category">("group");
+
   const kpiCards = [
     { title: "Total Active Employees", value: data.activeEmployees?.toLocaleString() || "0", icon: Users, color: "bg-blue-500", description: "Currently employed staff" },
     { title: "Hired in 2025", value: data.hires2025?.toLocaleString() || "0", icon: UserPlus, color: "bg-green-500", description: `${data.femaleHires2025 || 0} females hired` },
@@ -181,9 +183,15 @@ function ExecutiveSummary({ data }: { data: any }) {
     { title: "Recent Hires (30 days)", value: data.recentHires?.toLocaleString() || "0", icon: UserPlus, color: "bg-cyan-500", description: "New joiners this month" },
   ];
 
-  const genderRatio = data.activeEmployees > 0 ? ((data.activeFemales / data.activeEmployees) * 100).toFixed(1) : "0";
+  const activePwdTotal = data.activePwdTotal || 0;
+  const activePwdMales = data.activePwdMales || 0;
+  const activePwdFemales = data.activePwdFemales || 0;
+  const activePwdUnknown = data.activePwdUnknown || 0;
 
-  const genderChart = {
+  const pwdFemaleRatio = activePwdTotal > 0 ? ((activePwdFemales / activePwdTotal) * 100).toFixed(1) : "0";
+  const pwdMaleRatio = activePwdTotal > 0 ? ((activePwdMales / activePwdTotal) * 100).toFixed(1) : "0";
+
+  const pwdGenderChart = {
     tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
     legend: { bottom: 0 },
     series: [{
@@ -191,11 +199,59 @@ function ExecutiveSummary({ data }: { data: any }) {
       itemStyle: { borderRadius: 10, borderColor: "#fff", borderWidth: 2 },
       label: { show: true, formatter: "{b}\n{c}" },
       data: [
-        { value: data.activeMales || 0, name: "Male", itemStyle: { color: "#3b82f6" } },
-        { value: data.activeFemales || 0, name: "Female", itemStyle: { color: "#ec4899" } },
+        { value: activePwdMales, name: "Male", itemStyle: { color: "#3b82f6" } },
+        { value: activePwdFemales, name: "Female", itemStyle: { color: "#ec4899" } },
+        { value: activePwdUnknown, name: "Unknown", itemStyle: { color: "#94a3b8" } },
       ],
     }],
   };
+
+  const buildPwdBreakdownChart = (title: string, rows: any[], color: string) => ({
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+    title: { text: title, left: "center", textStyle: { fontSize: 13, fontWeight: 600 } },
+    grid: { left: "3%", right: "4%", bottom: "3%", top: 36, containLabel: true },
+    xAxis: { type: "value" },
+    yAxis: {
+      type: "category",
+      data: [...(rows || [])].reverse().map((r: any) => r.name),
+      axisLabel: { width: 120, overflow: "truncate" }
+    },
+    series: [{
+      type: "bar",
+      data: [...(rows || [])].reverse().map((r: any) => r.value),
+      itemStyle: { color, borderRadius: [0, 4, 4, 0] },
+      label: { show: true, position: "right" }
+    }]
+  });
+
+  const pwdBreakdownOptions = {
+    group: {
+      label: "By Group",
+      title: "PWD by Group",
+      data: data.pwdByGroup || [],
+      color: "#2563eb",
+    },
+    position: {
+      label: "By Position",
+      title: "PWD by Position Name",
+      data: data.pwdByPosition || [],
+      color: "#16a34a",
+    },
+    grade: {
+      label: "By Grade",
+      title: "PWD by Grade Name",
+      data: data.pwdByGrade || [],
+      color: "#d97706",
+    },
+    category: {
+      label: "By Category",
+      title: "PWD by Category",
+      data: data.pwdByCategory || [],
+      color: "#dc2626",
+    },
+  } as const;
+
+  const selectedPwdBreakdown = pwdBreakdownOptions[pwdBreakdownType];
 
   return (
     <div className="space-y-6">
@@ -218,11 +274,13 @@ function ExecutiveSummary({ data }: { data: any }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-card p-6 rounded-xl border shadow-sm">
-          <h3 className="font-semibold mb-4">Gender Distribution</h3>
-          <ReactECharts option={genderChart} style={{ height: "250px" }} />
+          <h3 className="font-semibold mb-4">PWD Gender Distribution (Active Payroll Eligible)</h3>
+          <ReactECharts option={pwdGenderChart} style={{ height: "250px" }} />
           <div className="text-center mt-2">
-            <span className="text-sm text-muted-foreground">Female Ratio: </span>
-            <span className="font-semibold text-pink-500">{genderRatio}%</span>
+            <span className="text-sm text-muted-foreground">Male: </span>
+            <span className="font-semibold text-blue-500">{pwdMaleRatio}%</span>
+            <span className="text-sm text-muted-foreground"> | Female: </span>
+            <span className="font-semibold text-pink-500">{pwdFemaleRatio}%</span>
           </div>
         </div>
 
@@ -260,7 +318,42 @@ function ExecutiveSummary({ data }: { data: any }) {
             <p className="text-sm text-muted-foreground mt-3">
               The organization operates through <span className="font-semibold text-blue-600">{data.groups || 0} groups</span> spanning <span className="font-semibold text-emerald-600">{data.regions || 0} regions</span> and <span className="font-semibold text-purple-600">{data.clusters || 0} clusters</span>, providing extensive geographic and operational coverage across the workforce.
             </p>
+            <p className="text-sm text-muted-foreground mt-3">
+              Active payroll-eligible PWD workforce is <span className="font-semibold text-slate-700">{activePwdTotal}</span> with <span className="font-semibold text-blue-600">{activePwdMales} male ({pwdMaleRatio}%)</span> and <span className="font-semibold text-pink-600">{activePwdFemales} female ({pwdFemaleRatio}%)</span> employees.
+            </p>
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-card p-6 rounded-xl border shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h3 className="font-semibold">PWD Breakdown</h3>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">View:</label>
+              <select
+                value={pwdBreakdownType}
+                onChange={(e) => setPwdBreakdownType(e.target.value as "group" | "position" | "grade" | "category")}
+                className="px-3 py-2 border rounded-lg bg-background text-sm"
+              >
+                <option value="group">{pwdBreakdownOptions.group.label}</option>
+                <option value="position">{pwdBreakdownOptions.position.label}</option>
+                <option value="grade">{pwdBreakdownOptions.grade.label}</option>
+                <option value="category">{pwdBreakdownOptions.category.label}</option>
+              </select>
+            </div>
+          </div>
+
+          {(selectedPwdBreakdown.data?.length || 0) > 0 ? (
+            <ReactECharts
+              option={buildPwdBreakdownChart(selectedPwdBreakdown.title, selectedPwdBreakdown.data, selectedPwdBreakdown.color)}
+              style={{ height: "340px" }}
+            />
+          ) : (
+            <div className="h-[340px] flex items-center justify-center text-sm text-muted-foreground">
+              No PWD data available for this view
+            </div>
+          )}
         </div>
       </div>
     </div>
